@@ -1,5 +1,6 @@
 const express  = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const app = express()
@@ -11,7 +12,6 @@ app.use(express.json())
 
 
 // //mongodb client
-
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.nvdjbig.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -43,6 +43,16 @@ run().catch(console.dir);
 app.get('/',(req,res)=>{
     res.send("Server is running..");
 })
+
+// implelmenting jwt
+app.post('/authentication', async(req, res)=>{
+  const userEmail = req.body;
+  const token = jwt.sign(userEmail, process.env.ACCESS_KEY_TOKEN, {expiresIn :"10d"});
+  res.send({token})
+})
+
+
+
 app.listen(port, ()=>{
     console.log(`Server is running on port : ${port}`);
 })
