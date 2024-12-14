@@ -1,15 +1,19 @@
-const express  = require('express');
-const cors = require('cors');
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const app = express()
+const express = require("express");
+const cors = require("cors");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
+const { MongoClient, ServerApiVersion } = require("mongodb");
+const app = express();
 const port = process.env.PORT || 4000;
 
 // //middleware
-app.use(cors());
-app.use(express.json())
-
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    optionsSuccessStatus: 200,
+  })
+);
+app.use(express.json());
 
 // //mongodb client
 
@@ -20,39 +24,67 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
+
+const userCollerction = client.db("gadget-shop").collection("users");
+const productCollection = client.db("gadget-shop").collection("products");
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
+
+    // get user
+    app.get("/user/:email", async (req, res) => {
+      const query = { email: req.params.email };
+      const user = await userCollerction.findOne(query);
+      if (!user) {
+        return res.send({ message: "Not Found" });
+      }
+      res.send(user);
+    });
+
+
+
+    
+    // insert user
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      //find the accoount by email to see that if the user is exixt before or not.
+      const query = { email: user.email };
+      const existingUser = await userCollerction.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists" });
+      }
+      const result = await userCollerction.insertOne(user);
+      res.send(result);
+    });
+
+    
   } finally {
-    // Ensures that the client will close when you finish/error
-    await client.close();
+    // await client.close();
   }
 }
 run().catch(console.dir);
 
-
+// implelmenting jwt
+app.post("/authentication", async (req, res) => {
+  const userEmail = req.body;
+  const token = jwt.sign(userEmail, process.env.ACCESS_KEY_TOKEN, {
+    expiresIn: "10d",
+  });
+  res.send({ token });
+});
 
 //api
-app.get('/',(req,res)=>{
-    res.send("Server is running..");
-})
+app.get("/", (req, res) => {
+  res.send("Server is running..");
+});
 
-// implelmenting jwt
-app.post('/authentication', async(req, res)=>{
-  const userEmail = req.body;
-  const token = jwt.sign(userEmail, process.env.ACCESS_KEY_TOKEN, {expiresIn :"10d"});
-  res.send({token})
-})
-
-
-
-app.listen(port, ()=>{
-    console.log(`Server is running on port : ${port}`);
-})
+app.listen(port, () => {
+  console.log(`Server is running on port : ${port}`);
+});
